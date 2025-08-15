@@ -161,7 +161,11 @@ export default function EditEventForm({ eventId }: EditEventFormProps) {
       }
 
       alert('Event updated successfully!')
+<<<<<<< HEAD
       // router.push('/event-management')
+=======
+      router.push('/event-management')
+>>>>>>> week-4-13-08
     } catch (error: any) {
       setErrorMessage(error.message || 'Failed to submit the form.')
     } finally {

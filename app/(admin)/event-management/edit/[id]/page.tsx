@@ -10,7 +10,7 @@ export default function Page() {
     const eventId = params.id as string
   return (
     <>
-      <PageTitle title="Create new event" />
+      <PageTitle title="Edit event" />
       <div className="max-w-3xl mx-auto p-4">
         <EditEventForm eventId={eventId} />
       </div>
