@@ -5,7 +5,7 @@ export const MENU_ITEMS: MenuItemType[] = [
     key: 'menu',
     label: 'Main',
     isTitle: true,
-    
+
   },
   {
     key: 'home',
@@ -17,7 +17,18 @@ export const MENU_ITEMS: MenuItemType[] = [
     },
     url: '/home',
   },
-    {
+{
+  key: 'adhan',
+  icon:  'ri:volume-up-line',
+  label: 'Adhan Management',
+  badge: {
+    text: '',
+    variant: 'success',
+  },
+  url: '/adhan',
+},
+
+  {
     key: 'event-management',
     icon: 'ri:calendar-event-line',
     label: 'Event Management',
@@ -27,13 +38,13 @@ export const MENU_ITEMS: MenuItemType[] = [
     },
     url: '/event-management',
   },
-    {
+  {
     key: 'menu',
     label: 'admin',
     isTitle: true,
-    roles: ['MASJID_ADMIN'], 
+    roles: ['MASJID_ADMIN'],
   },
-    {
+  {
     key: 'masjids',
     icon: 'material-symbols:mosque',
     label: 'masjids',
@@ -42,9 +53,9 @@ export const MENU_ITEMS: MenuItemType[] = [
       variant: 'success',
     },
     url: '/masjids',
-    roles: ['MASJID_ADMIN'], 
+    roles: ['MASJID_ADMIN'],
   },
-      {
+  {
     key: 'users-managements',
     icon: 'material-symbols:supervised-user-circle',
     label: 'User Management',
@@ -53,6 +64,6 @@ export const MENU_ITEMS: MenuItemType[] = [
       variant: 'success',
     },
     url: '/users-managements',
-    roles: ['MASJID_ADMIN'], 
+    roles: ['MASJID_ADMIN'],
   },
 ]
