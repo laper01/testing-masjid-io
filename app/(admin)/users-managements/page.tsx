@@ -9,7 +9,7 @@ const Starter = () => {
         <>
             <PageTitle title="Users Management" />
             <Link href="/users-managements/create" className="d-flex justify-content-end">
-                <Button variant="success " size="lg" className="fs-16 flex-centered gap-1 mb-4" id="btn-new-event">
+                <Button variant="success "  className="fs-16 flex-centered gap-1 mb-4" id="btn-new-event">
                     <IconifyIcon icon="ic:baseline-person-add" /> Create New User Data
                 </Button>
             </Link>
