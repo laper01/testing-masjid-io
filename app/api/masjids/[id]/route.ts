@@ -1,69 +1,92 @@
+// app/api/masjids/[id]/route.ts
+
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-// You must import your authOptions from your next-auth configuration file.
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth"; // Pastikan path ini benar
 
-// This is the handler for GET requests to /api/masjids/[id]
-// The `params` object is automatically populated by Next.js with the dynamic route parameters.
+// Handler untuk GET /api/masjids/[id]
 export async function GET(request: Request, { params }: { params: { id: string } }) {
-  try {
-    // 1. Get the current user's session to ensure they are authenticated.
-    const session = await getServerSession(authOptions);
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.accessToken) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
 
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized. Please log in.' }, { status: 401 });
+    const { id } = params;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}masjids/${id}`;
+
+    const apiResponse = await fetch(apiUrl, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${session.accessToken}` },
+      cache: 'no-store',
+    });
+
+    const result = await apiResponse.json();
+    return NextResponse.json(result, { status: apiResponse.status });
+
+  } catch (error) {
+    console.error(`GET MASJID ${params.id} API ERROR:`, error);
+    return NextResponse.json({ message: 'Kesalahan Server Internal' }, { status: 500 });
+  }
+}
+
+// Handler untuk PATCH /api/masjids/[id]
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.accessToken) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = params;
+    const body = await request.json();
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}masjids/${id}`;
+
+    const apiResponse = await fetch(apiUrl, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.accessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await apiResponse.json();
+    return NextResponse.json(result, { status: apiResponse.status });
+
+  } catch (error) {
+    console.error(`PATCH MASJID ${params.id} API ERROR:`, error);
+    return NextResponse.json({ message: 'Kesalahan Server Internal' }, { status: 500 });
+  }
+}
+
+// Handler untuk DELETE /api/masjids/[id]
+export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.accessToken) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = params;
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}masjids/${id}`;
+
+    const apiResponse = await fetch(apiUrl, {
+      method: "DELETE",
+      headers: {
+        "Authorization": `Bearer ${session.accessToken}`,
+      },
+    });
+
+    if (apiResponse.status === 204 || apiResponse.ok) { // 204 No Content adalah respons umum untuk DELETE
+        return new NextResponse(null, { status: 204 });
     }
 
-    // 2. Extract the bearer token from the session.
-    const bearerToken = (session as any)?.accessToken;
+    const result = await apiResponse.json();
+    return NextResponse.json(result, { status: apiResponse.status });
 
-    if (!bearerToken) {
-      console.error("Server configuration error: Access token not found in session.");
-      return NextResponse.json(
-        { error: 'Authentication token is missing.' },
-        { status: 500 }
-      );
-    }
-
-    // 3. Get the masjid ID from the dynamic route parameters.
-    const { id } = params;
-    if (!id) {
-        return NextResponse.json({ error: 'Masjid ID is required.' }, { status: 400 });
-    }
-
-    // 4. Define the target URL for the real backend.
-    // Note: The endpoint for a single masjid is /masjid (singular)
-    const api_url = `http://198.199.81.24/api/v1/masjid/${id}`;
-
-    // 5. Make the fetch request to the real backend.
-    // Note: GET requests do not have a body.
-    const apiResponse = await fetch(api_url, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${bearerToken}`,
-      },
-      cache: 'no-store', // Ensures you always get the freshest data for a single item
-    });
-
-    // 6. Check if the backend request was successful.
-    if (!apiResponse.ok) {
-      const errorResult = await apiResponse.json();
-      console.error("Backend API Error:", errorResult);
-      return NextResponse.json(
-        { error: 'Failed to fetch masjid data.', details: errorResult },
-        { status: apiResponse.status }
-      );
-    }
-
-    // 7. If successful, parse and return the response.
-    const result = await apiResponse.json();
-    return NextResponse.json(result, { status: 200 }); // 200 OK
-
-  } catch (error) {
-    console.error("API Route Error:", error);
-    return NextResponse.json(
-      { error: 'An internal server error occurred.' },
-      { status: 500 }
-    );
-  }
+  } catch (error) {
+    console.error(`DELETE MASJID ${params.id} API ERROR:`, error);
+    return NextResponse.json({ message: 'Kesalahan Server Internal' }, { status: 500 });
+  }
 }

@@ -1,3 +1,27 @@
+// types/masjids.ts
+
+// Type for the data shown in the main table (from the "get all" endpoint)
+export type MasjidListItem = {
+  id: string;
+  name: string;
+  location: string;
+  isVerified: boolean;
+  address: {
+    city: string;
+    countryCode: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  prayerTimesConfiguration: {
+    id: string;
+    name: string;
+  };
+};
+
+// The full, detailed type for the Create/Edit Form
+// This assumes the "get by ID" endpoint returns all these fields.
+// types/masjids.ts
+
 export type Masjid = {
   id: string;
   name: string;
@@ -17,6 +41,7 @@ export type Masjid = {
     extension?: string;
   };
   prayerConfig: {
+    name: string;
     method: string;
     fajrAngle: number;
     ishaAngle: number;
@@ -31,6 +56,6 @@ export type Masjid = {
       ishaAdjustment: number;
     };
   };
-  createTime?: string;
-  updateTime?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };

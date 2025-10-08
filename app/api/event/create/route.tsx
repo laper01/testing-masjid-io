@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       const body = await request.json();
   
       // 4. Definisikan URL target untuk backend.
-      const api_url = "http://198.199.81.24/api/v1/event";
+      const api_url = `${process.env.NEXT_PUBLIC_API_URL}event`;
   
       // 5. Lakukan permintaan fetch ke backend.
       const apiResponse = await fetch(api_url, {

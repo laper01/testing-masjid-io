@@ -35,7 +35,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const body = await request.json();
 
     // 5. Definisikan URL target untuk backend.
-    const api_url = `http://198.199.81.24/api/v1/event/${id}`;
+    const api_url = `${process.env.NEXT_PUBLIC_API_URL}event/${id}`;
 
     // 6. Lakukan permintaan fetch ke backend.
     // Catatan: Backend Anda sepertinya tidak memerlukan ID di dalam body untuk PATCH.

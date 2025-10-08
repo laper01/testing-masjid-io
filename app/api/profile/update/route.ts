@@ -39,7 +39,7 @@ export async function PATCH(request: Request) {
 
     // 5. Define the target URL for the real backend.
     //    Based on your example, the endpoint is /users for a PATCH.
-    const api_url = "http://198.199.81.24/api/v1/users";
+    const api_url = `${process.env.NEXT_PUBLIC_API_URL}users`;
 
     // 6. Make the fetch request to the real backend.
     const apiResponse = await fetch(api_url, {

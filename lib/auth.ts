@@ -13,7 +13,7 @@ declare module "next-auth" {
 // This function will be called when the access token has expired.
 async function refreshAccessToken(token: any) {
   try {
-    const response = await fetch("http://198.199.81.24/api/v1/auth/refresh_token", {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}auth/refresh_token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -58,7 +58,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Please enter an email and password");
         }
 
-        const res = await fetch(`http://198.199.81.24/api/v1/auth/login`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}auth/login`, {
           method: 'POST',
           body: JSON.stringify({
             email: credentials.email,
