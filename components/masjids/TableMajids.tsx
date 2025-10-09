@@ -66,7 +66,7 @@ export default function TableMasjids() {
       if (!response.ok) throw new Error('Failed to fetch masjid details for editing.')
       const result = await response.json()
       // No mapper needed here either, as get-by-id is also camelCase
-      const masjidData = result.masjid;
+      const masjidData = result;
       if (masjidData && masjidData.prayerTimesConfiguration) {
         masjidData.prayerConfig = masjidData.prayerTimesConfiguration;
         delete masjidData.prayerTimesConfiguration;

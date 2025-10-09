@@ -1,0 +1,220 @@
+'use client';
+
+import { Card, CardBody, CardHeader, Col, Row, Button, ButtonGroup, Spinner, Modal, Alert } from 'react-bootstrap';
+import React, { useState, useEffect, useMemo } from 'react';
+import ReactTable from '@/components/Table';
+import type { ColumnDef, PaginationState } from '@tanstack/react-table';
+import IconifyIcon from '@/components/wrappers/IconifyIcon';
+import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import type { AdhanFile, Masjid } from '@/types/adhan.type';
+import UpdateAdhanModal from './UpdateAdhanForm';
+import CreateAdhanModal from './CreateAdhanForm';
+
+
+const sizePerPageList = [5, 10, 20, 50];
+
+export default function AdhanManagementTable() {
+    // State for table data
+    const [adhans, setAdhans] = useState<AdhanFile[]>([]);
+    const [masjidMap, setMasjidMap] = useState<Map<string, Masjid>>(new Map());
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
+    const [pageCount, setPageCount] = useState(0);
+
+    // State for modals
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedAdhan, setSelectedAdhan] = useState<AdhanFile | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Main data fetching function
+    const fetchPageData = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Step 1: Fetch Adhan files
+            const adhanRes = await fetch(`/api/adhan`);
+            if (!adhanRes.ok) throw new Error('Failed to fetch Adhan files.');
+            const adhanResult = await adhanRes.json();
+            const fetchedAdhans: AdhanFile[] = adhanResult.data?.adhanFiles || [];
+            setAdhans(fetchedAdhans);
+            setPageCount(Math.ceil((adhanResult.data?.totalCount || 0) / pagination.pageSize));
+
+            // Step 2: Fetch details for unique Masjids on the page
+            const uniqueMasjidIds = [...new Set(fetchedAdhans.map(adhan => adhan.masjidId))];
+            if (uniqueMasjidIds.length > 0) {
+                const masjidPromises = uniqueMasjidIds.map(id =>
+                    fetch(`/api/masjids/${id}`).then(res => res.ok ? res.json() : null)
+                );
+                const masjidResults = await Promise.all(masjidPromises);
+                const newMasjidMap = new Map<string, Masjid>();
+                masjidResults.forEach((masjid: Masjid | null) => {
+                    if (masjid?.id) newMasjidMap.set(masjid.id, masjid);
+                });
+                setMasjidMap(newMasjidMap);
+            }
+        } catch (err: any) {
+            setError(err.message);
+            toast.error(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPageData();
+    }, [pagination.pageIndex, pagination.pageSize]);
+
+    // Modal Handlers
+    const handleShowUpdateModal = (adhan: AdhanFile) => {
+        setSelectedAdhan(adhan);
+        setShowUpdateModal(true);
+    };
+
+    const handleShowDeleteModal = (adhan: AdhanFile) => {
+        setSelectedAdhan(adhan);
+        setShowDeleteModal(true);
+    };
+
+    const handleHideModals = () => {
+        setShowCreateModal(false);
+        setShowUpdateModal(false);
+        setShowDeleteModal(false);
+        setSelectedAdhan(null);
+    };
+
+    const handleSuccess = () => {
+        handleHideModals();
+        fetchPageData(); // Refresh table data on success
+    };
+
+    // Delete Handler
+    const handleDelete = async () => {
+        if (!selectedAdhan) return;
+        setIsDeleting(true);
+        try {
+            const response = await fetch(`/api/adhan/${selectedAdhan.id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to delete adhan file.');
+            }
+            toast.success(`Adhan file "${selectedAdhan.name}" deleted successfully!`);
+            handleSuccess();
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Table Column Definitions
+    const columns: ColumnDef<AdhanFile>[] = useMemo(() => [
+        { header: 'Adhan Name', accessorKey: 'name' },
+        {
+            header: 'Masjid',
+            accessorKey: 'masjidId',
+            cell: ({ row }) => {
+                const masjid = masjidMap.get(row.original.masjidId);
+                if (!masjid) return <Spinner animation="border" size="sm" />;
+                return (
+                    <div>
+                        <h5 className="m-0">{masjid.name}</h5>
+                        <p className="m-0 text-muted fs-13">{masjid.location}</p>
+                    </div>
+                );
+            },
+        },
+        {
+            header: 'Adhan Sound',
+            accessorKey: 'url',
+            cell: ({ getValue }) => <audio controls src={getValue() as string} style={{ width: '250px' }} />,
+        },
+        {
+            id: 'actions',
+            header: 'Actions',
+            cell: ({ row }) => (
+                <ButtonGroup size="sm">
+                    <Button variant="outline-primary" onClick={() => handleShowUpdateModal(row.original)}>
+                        <IconifyIcon icon="ri-edit-box-line" />
+                    </Button>
+                    <Button variant="outline-danger" onClick={() => handleShowDeleteModal(row.original)}>
+                        <IconifyIcon icon="ri-delete-bin-line" />
+                    </Button>
+                </ButtonGroup>
+            ),
+        },
+    ], [masjidMap]);
+
+    return (
+        <>
+            <Row>
+                <Col>
+                    <Card>
+                        <Card.Header className="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h4 className="header-title">Adhan Sound Management</h4>
+                                <p className="text-muted mb-0">Manage Adhan sound files for different masjids.</p>
+                            </div>
+                            <Button variant="success" className="fs-16 flex-centered gap-1" onClick={() => setShowCreateModal(true)}>
+                                <IconifyIcon icon="ic:baseline-add" /> Add New Adhan
+                            </Button>
+                        </Card.Header>
+                        <CardBody>
+                            {error && <Alert variant="danger">{error}</Alert>}
+                            {loading ? (
+                                <div className="text-center p-5">
+                                    <Spinner animation="border" />
+                                    <p className="mt-2">Loading Adhan Data...</p>
+                                </div>
+                            ) : (
+                                <ReactTable<AdhanFile>
+                                    columns={columns}
+                                    data={adhans}
+                                    rowsPerPageList={sizePerPageList}
+                                    tableClass="table-striped"
+                                    showPagination
+                                    pagination={pagination}
+                                    onPaginationChange={setPagination}
+                                    pageCount={pageCount}
+                                    options={{ manualPagination: true }}
+                                />
+                            )}
+                        </CardBody>
+                    </Card>
+                </Col>
+            </Row>
+
+            {/* Modals */}
+            <CreateAdhanModal show={showCreateModal} onHide={handleHideModals} onSuccess={handleSuccess} />
+            
+            {selectedAdhan && (
+                <UpdateAdhanModal
+                    show={showUpdateModal}
+                    onHide={handleHideModals}
+                    onSuccess={handleSuccess}
+                    adhanId={selectedAdhan.id}
+                />
+            )}
+
+            <Modal show={showDeleteModal} onHide={handleHideModals} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Confirm Deletion</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    Are you sure you want to delete the Adhan file: <strong>{selectedAdhan?.name}</strong>?
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={handleHideModals} disabled={isDeleting}>
+                        Cancel
+                    </Button>
+                    <Button variant="danger" onClick={handleDelete} disabled={isDeleting}>
+                        {isDeleting ? <Spinner as="span" animation="border" size="sm" /> : 'Delete'}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </>
+    );
+}

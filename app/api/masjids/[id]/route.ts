@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     });
 
     const result = await apiResponse.json();
-    return NextResponse.json(result, { status: apiResponse.status });
+    return NextResponse.json(result.masjid, { status: 200 });
 
   } catch (error) {
     console.error(`GET MASJID ${params.id} API ERROR:`, error);
