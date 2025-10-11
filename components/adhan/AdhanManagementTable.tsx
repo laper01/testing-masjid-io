@@ -1,15 +1,16 @@
 'use client';
 
 import { Card, CardBody, CardHeader, Col, Row, Button, ButtonGroup, Spinner, Modal, Alert } from 'react-bootstrap';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import ReactTable from '@/components/Table';
 import type { ColumnDef, PaginationState } from '@tanstack/react-table';
 import IconifyIcon from '@/components/wrappers/IconifyIcon';
-import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import type { AdhanFile, Masjid } from '@/types/adhan.type';
+import type { AdhanFile, Masjid, Preference } from '@/types/adhan.type';
+
 import UpdateAdhanModal from './UpdateAdhanForm';
 import CreateAdhanModal from './CreateAdhanForm';
+import PreferenceManagerModalTable from './PreferenceManagerModaltable';
 
 
 const sizePerPageList = [5, 10, 20, 50];
@@ -23,27 +24,47 @@ export default function AdhanManagementTable() {
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 10 });
     const [pageCount, setPageCount] = useState(0);
 
+    // State for preferences
+    const [preference, setPreference] = useState<Preference | null>(null);
+
     // State for modals
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showPreferenceModal, setShowPreferenceModal] = useState(false); 
     const [selectedAdhan, setSelectedAdhan] = useState<AdhanFile | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
     // Main data fetching function
-    const fetchPageData = async () => {
+    const fetchPageData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            // Step 1: Fetch Adhan files
-            const adhanRes = await fetch(`/api/adhan`);
+            const [adhanRes, prefRes] = await Promise.all([
+                fetch(`/api/adhan?page=${pagination.pageIndex + 1}&limit=${pagination.pageSize}`),
+                fetch('/api/preferences', { cache: 'no-store' })
+            ]);
+
             if (!adhanRes.ok) throw new Error('Failed to fetch Adhan files.');
             const adhanResult = await adhanRes.json();
             const fetchedAdhans: AdhanFile[] = adhanResult.data?.adhanFiles || [];
             setAdhans(fetchedAdhans);
             setPageCount(Math.ceil((adhanResult.data?.totalCount || 0) / pagination.pageSize));
 
-            // Step 2: Fetch details for unique Masjids on the page
+            if (prefRes.ok) {
+                const prefResult = await prefRes.json();
+                const prefs: Preference[] = prefResult.preferences;
+
+                if (prefs && prefs.length > 0) {
+                    const sortedPrefs = [...prefs].sort((a, b) => new Date(b.updateTime).getTime() - new Date(a.updateTime).getTime());
+                    setPreference(sortedPrefs[0]);
+                } else {
+                    setPreference(null);
+                }
+            } else {
+                console.error("Could not fetch user preferences.");
+            }
+
             const uniqueMasjidIds = [...new Set(fetchedAdhans.map(adhan => adhan.masjidId))];
             if (uniqueMasjidIds.length > 0) {
                 const masjidPromises = uniqueMasjidIds.map(id =>
@@ -62,13 +83,13 @@ export default function AdhanManagementTable() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [pagination.pageIndex, pagination.pageSize]);
 
     useEffect(() => {
         fetchPageData();
-    }, [pagination.pageIndex, pagination.pageSize]);
+    }, [fetchPageData]);
 
-    // Modal Handlers
+    // --- Modal Handlers ---
     const handleShowUpdateModal = (adhan: AdhanFile) => {
         setSelectedAdhan(adhan);
         setShowUpdateModal(true);
@@ -83,15 +104,16 @@ export default function AdhanManagementTable() {
         setShowCreateModal(false);
         setShowUpdateModal(false);
         setShowDeleteModal(false);
+        setShowPreferenceModal(false); 
         setSelectedAdhan(null);
     };
 
     const handleSuccess = () => {
         handleHideModals();
-        fetchPageData(); // Refresh table data on success
+        fetchPageData();
     };
 
-    // Delete Handler
+    // --- Delete Handler ---
     const handleDelete = async () => {
         if (!selectedAdhan) return;
         setIsDeleting(true);
@@ -110,9 +132,24 @@ export default function AdhanManagementTable() {
         }
     };
 
-    // Table Column Definitions
+    // --- Table Column Definitions (UPDATED) ---
     const columns: ColumnDef<AdhanFile>[] = useMemo(() => [
-        { header: 'Adhan Name', accessorKey: 'name' },
+        { 
+            header: 'Adhan Name', 
+            accessorKey: 'name',
+            cell: ({ row }) => {
+                // The star is now just a visual indicator
+                const isCurrentPreference = preference?.adhanFileId === row.original.id;
+                return (
+                    <div className="d-flex align-items-center">
+                        {row.original.name}
+                        {isCurrentPreference && (
+                            <IconifyIcon icon="ri-star-fill" className="ms-2 text-warning" />
+                        )}
+                    </div>
+                );
+            }
+        },
         {
             header: 'Masjid',
             accessorKey: 'masjidId',
@@ -136,6 +173,7 @@ export default function AdhanManagementTable() {
             id: 'actions',
             header: 'Actions',
             cell: ({ row }) => (
+                // --- FIX: The star button has been removed from the actions ---
                 <ButtonGroup size="sm">
                     <Button variant="outline-primary" onClick={() => handleShowUpdateModal(row.original)}>
                         <IconifyIcon icon="ri-edit-box-line" />
@@ -146,22 +184,27 @@ export default function AdhanManagementTable() {
                 </ButtonGroup>
             ),
         },
-    ], [masjidMap]);
+    ], [masjidMap, preference]);
 
     return (
         <>
             <Row>
                 <Col>
                     <Card>
-                        <Card.Header className="d-flex justify-content-between align-items-center">
+                        <CardHeader className="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div>
                                 <h4 className="header-title">Adhan Sound Management</h4>
-                                <p className="text-muted mb-0">Manage Adhan sound files for different masjids.</p>
+                                <p className="text-muted mb-0">Manage and set default Adhan sounds.</p>
                             </div>
-                            <Button variant="success" className="fs-16 flex-centered gap-1" onClick={() => setShowCreateModal(true)}>
-                                <IconifyIcon icon="ic:baseline-add" /> Add New Adhan
-                            </Button>
-                        </Card.Header>
+                            <ButtonGroup>
+                               <Button variant="light" onClick={() => setShowPreferenceModal(true)}>
+                                    <IconifyIcon icon="ri-settings-3-line" /> Manage Preferences
+                                </Button>
+                                <Button variant="success" onClick={() => setShowCreateModal(true)}>
+                                    <IconifyIcon icon="ic:baseline-add" /> Add New Adhan
+                                </Button>
+                            </ButtonGroup>
+                        </CardHeader>
                         <CardBody>
                             {error && <Alert variant="danger">{error}</Alert>}
                             {loading ? (
@@ -189,6 +232,8 @@ export default function AdhanManagementTable() {
 
             {/* Modals */}
             <CreateAdhanModal show={showCreateModal} onHide={handleHideModals} onSuccess={handleSuccess} />
+            
+            <PreferenceManagerModalTable show={showPreferenceModal} onHide={handleHideModals} onSuccess={handleSuccess} />
             
             {selectedAdhan && (
                 <UpdateAdhanModal
@@ -218,3 +263,4 @@ export default function AdhanManagementTable() {
         </>
     );
 }
+

@@ -121,6 +121,17 @@ export default function TableMasjids() {
           <Button variant="outline-danger" onClick={() => handleShowDeleteModal(row.original)}>
             <IconifyIcon icon="ri-delete-bin-line" />
           </Button>
+          <Button
+            variant="outline-success"
+            onClick={() =>
+              window.open(
+                `/masjid-detail/${row.original.id}`,
+                '_blank'
+              )
+            }
+          >
+            <IconifyIcon icon="ri-external-link-line" />
+          </Button>
         </ButtonGroup>
       ),
     },
@@ -137,7 +148,7 @@ export default function TableMasjids() {
     <>
       <Row className="justify-content-end mb-3">
         <Col xs="auto">
-          <Button variant="success"  onClick={handleShowCreateModal}>
+          <Button variant="success" onClick={handleShowCreateModal}>
             <IconifyIcon icon="mdi:plus-circle" /> Create New Masjid Data
 
           </Button>

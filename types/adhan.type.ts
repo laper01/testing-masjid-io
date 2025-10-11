@@ -17,3 +17,11 @@ export type Masjid = {
     number: string;
   };
 };
+
+export type Preference = {
+  id: string;
+  userId: string;
+  adhanFileId: string;
+  createTime: string;
+  updateTime: string;
+};

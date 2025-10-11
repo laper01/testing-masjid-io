@@ -22,6 +22,8 @@ const Calendar = ({ events, onDateClick, onEventClick }: CalendarProps) => {
           week: 'Week',
           day: 'Day',
           list: 'List',
+          prev: 'Prev',
+          next: 'Next',
         }}
         headerToolbar={{
           left: 'prev,next today',
