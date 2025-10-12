@@ -27,6 +27,8 @@ export type Masjid = {
   name: string;
   location: string;
   isVerified: boolean;
+  latitude: number | null; // ADDED
+  longitude: number | null; // ADDED
   address: {
     addressLine1: string;
     addressLine2?: string;

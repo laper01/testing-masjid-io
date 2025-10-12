@@ -5,6 +5,7 @@ import { Formik, Form as FormikForm, Field, ErrorMessage, useFormikContext } fro
 import * as Yup from 'yup'
 import { Button, Col, Form, Row, Alert, Spinner, Modal } from 'react-bootstrap'
 import BootstrapPhoneInput from '@/components/forms/BootstrapPhoneInput'
+import LocationPicker from '@/components/LocationPicker'
 import { Masjid } from '@/types/masjids'
 import { mapFormToApi } from '@/utils/dataMapper'
 
@@ -12,6 +13,8 @@ const masjidValidationSchema = Yup.object().shape({
   name: Yup.string().required('Masjid name is required'),
   location: Yup.string().required('Location is required'),
   isVerified: Yup.boolean().required('Verification status is required'),
+  latitude: Yup.number().required('Latitude is required'),
+  longitude: Yup.number().required('Longitude is required'),
   address: Yup.object().shape({
     addressLine1: Yup.string().required('Address Line 1 is required'),
     addressLine2: Yup.string(),
@@ -76,32 +79,62 @@ const ModalFormContent = ({ onHide, isEditMode }: { onHide: () => void, isEditMo
       <Modal.Body>
         <FormikForm>
           <h5 className="mb-3">Basic Information</h5>
-          <Row><FormField name="name" label="Masjid Name" /><FormField name="location" label="Location" /></Row>
-          <Form.Group className="mb-4"><Field as={Form.Check} type="checkbox" name="isVerified" id="isVerified" label="Is Verified" /></Form.Group>
+          <Row>
+            <FormField name="name" label="Masjid Name" />
+            <FormField name="location" label="Location" />
+          </Row>
+          <Form.Group className="mb-4">
+            <Field as={Form.Check} type="checkbox" name="isVerified" id="isVerified" label="Is Verified" />
+          </Form.Group>
+
+          <hr />
+          <h5 className="mb-3">Location on Map</h5>
+          <Field name="latitude">
+            {({ field, form }: any) => (
+              <LocationPicker
+                latitude={form.values.latitude}
+                longitude={form.values.longitude}
+                onLocationChange={({ lat, lng }) => {
+                  form.setFieldValue('latitude', lat);
+                  form.setFieldValue('longitude', lng);
+                }}
+              />
+            )}
+          </Field>
+          <ErrorMessage name="latitude" component={Form.Text} className="text-danger d-block mt-1" />
+          <ErrorMessage name="longitude" component={Form.Text} className="text-danger d-block" />
+
           <hr />
           <h5 className="mb-3">Address</h5>
           <Row><FormField name="address.addressLine1" label="Address Line 1" /><FormField name="address.addressLine2" label="Address Line 2 (Optional)" /></Row>
           <Row><FormField name="address.city" label="City" /><FormField name="address.zoneCode" label="Zone Code" /></Row>
           <Row><FormField name="address.postalCode" label="Postal Code" /><FormField name="address.countryCode" label="Country Code" /></Row>
+
           <hr />
           <h5 className="mb-3">Phone Number</h5>
           <Row><Form.Group as={Col} md="12" className="mb-3"><Form.Label>Phone Number</Form.Label><Field name="phoneNumber" component={BootstrapPhoneInput} /></Form.Group></Row>
+
           <hr />
           <h5 className="mb-3">Prayer Time Configuration</h5>
           <Row><FormField name="prayerConfig.name" label="Configuration Name" /></Row>
           <Row>
             <FormField name="prayerConfig.method" label="Calculation Method" as="select">
-              <option value="MUSLIM_WORLD_LEAGUE">Muslim World League</option><option value="EGYPTIAN">Egyptian</option><option value="OTHER">Other</option>
+              <option value="MUSLIM_WORLD_LEAGUE">Muslim World League</option>
+              <option value="EGYPTIAN">Egyptian</option>
+              <option value="OTHER">Other</option>
             </FormField>
             <FormField name="prayerConfig.asrMethod" label="Asr Method" as="select">
-              <option value="SHAFI_HANBALI_MALIKI">Standard</option><option value="HANAFI">Hanafi</option>
+              <option value="SHAFI_HANBALI_MALIKI">Standard</option>
+              <option value="HANAFI">Hanafi</option>
             </FormField>
           </Row>
           <Row><FormField name="prayerConfig.fajrAngle" label="Fajr Angle" type="number" /><FormField name="prayerConfig.ishaAngle" label="Isha Angle" type="number" /></Row>
           <Row>
             <FormField name="prayerConfig.ishaInterval" label="Isha Interval (Minutes)" type="number" />
             <FormField name="prayerConfig.highLatitudeRule" label="High Latitude Rule" as="select">
-              <option value="MIDDLE_OF_THE_NIGHT">Middle of the Night</option><option value="SEVENTH_OF_THE_NIGHT">Seventh of the Night</option><option value="TWILIGHT_ANGLE">Twilight Angle</option>
+              <option value="MIDDLE_OF_THE_NIGHT">Middle of the Night</option>
+              <option value="SEVENTH_OF_THE_NIGHT">Seventh of the Night</option>
+              <option value="TWILIGHT_ANGLE">Twilight Angle</option>
             </FormField>
           </Row>
           <h6 className="mt-4 mb-3">Prayer Adjustments (minutes)</h6>
@@ -131,20 +164,34 @@ export default function MasjidFormModal({ show, onHide, onSuccess, isEditMode = 
 
   const getInitialValues = () => {
     const defaultValues = {
-      name: '', location: 'Indonesia', isVerified: true,
+      name: '',
+      location: 'Indonesia',
+      isVerified: true,
+      latitude: null,
+      longitude: null,
       address: { addressLine1: '', addressLine2: '', zoneCode: '', postalCode: '', city: 'Mataram', countryCode: 'ID' },
       phoneNumber: '',
       prayerConfig: {
-        name: '', method: 'MUSLIM_WORLD_LEAGUE', fajrAngle: 18, ishaAngle: 17, ishaInterval: 0, asrMethod: 'SHAFI_HANBALI_MALIKI', highLatitudeRule: 'MIDDLE_OF_THE_NIGHT',
+        name: '',
+        method: 'MUSLIM_WORLD_LEAGUE',
+        fajrAngle: 18,
+        ishaAngle: 17,
+        ishaInterval: 0,
+        asrMethod: 'SHAFI_HANBALI_MALIKI',
+        highLatitudeRule: 'MIDDLE_OF_THE_NIGHT',
         adjustments: { fajrAdjustment: 0, dhuhrAdjustment: 5, asrAdjustment: 0, maghribAdjustment: 0, ishaAdjustment: 7 },
       },
     };
     if (isEditMode && initialData) {
       return {
-        ...defaultValues, ...initialData,
+        ...defaultValues,
+        ...initialData,
+        latitude: initialData.latitude || null,
+        longitude: initialData.longitude || null,
         address: { ...defaultValues.address, ...initialData.address },
         prayerConfig: {
-          ...defaultValues.prayerConfig, ...initialData.prayerConfig,
+          ...defaultValues.prayerConfig,
+          ...initialData.prayerConfig,
           adjustments: { ...defaultValues.prayerConfig.adjustments, ...initialData.prayerConfig?.adjustments },
         },
         phoneNumber: convertPhoneToE164(initialData.phoneNumber),
@@ -160,7 +207,11 @@ export default function MasjidFormModal({ show, onHide, onSuccess, isEditMode = 
       const apiPayload = mapFormToApi(formValues);
       const url = isEditMode ? `/api/masjids/${initialData?.id}` : '/api/masjids';
       const method = isEditMode ? 'PATCH' : 'POST';
-      const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(apiPayload) });
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiPayload),
+      });
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.message || 'Request failed');
@@ -177,7 +228,12 @@ export default function MasjidFormModal({ show, onHide, onSuccess, isEditMode = 
       <Modal.Header closeButton>
         <Modal.Title>{isEditMode ? `Edit Masjid: ${initialData?.name}` : 'Create New Masjid'}</Modal.Title>
       </Modal.Header>
-      <Formik initialValues={getInitialValues()} validationSchema={masjidValidationSchema} onSubmit={handleSubmit} enableReinitialize>
+      <Formik
+        initialValues={getInitialValues()}
+        validationSchema={masjidValidationSchema}
+        onSubmit={handleSubmit}
+        enableReinitialize
+      >
         <>
           {formError && <Alert variant="danger" className="mx-4 mt-3 mb-0">{formError}</Alert>}
           <ModalFormContent onHide={onHide} isEditMode={isEditMode} />

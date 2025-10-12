@@ -7,8 +7,25 @@ import * as Icon from 'react-feather';
 import Image from 'next/image';
 import * as adhan from 'adhan';
 import moment from 'moment';
+import dynamic from 'next/dynamic';
+import "leaflet/dist/leaflet.css";
+import L from 'leaflet';
 
-// --- 1. TYPES to match the API response ---
+// --- Dynamic Imports for Leaflet components (to prevent SSR issues) ---
+const MapContainer = dynamic(() => import('react-leaflet').then(mod => mod.MapContainer), { ssr: false });
+const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLayer), { ssr: false });
+const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false });
+
+// --- Fix for default Leaflet icon ---
+const DefaultIcon = L.icon({
+    iconUrl: "/leaflet/marker-icon.png",
+    shadowUrl: "/leaflet/marker-shadow.png",
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// --- Types ---
 type PrayerTimeAdjustments = {
     fajr: number;
     dhuhr: number;
@@ -38,6 +55,8 @@ type Masjid = {
     name: string;
     location: string;
     isVerified: boolean;
+    latitude: number;
+    longitude: number;
     address: {
         addressLine1: string;
         addressLine2?: string;
@@ -60,7 +79,6 @@ type PrayerTimes = {
     Maghrib: string;
     Isha: string;
 };
-
 
 // --- Helper Functions ---
 const getAdhanMethod = (apiMethod?: string) => {
@@ -89,27 +107,6 @@ const getHighLatitudeRule = (apiRule?: string) => {
     }
 };
 
-const getCoordinatesFromAddress = async (address: string) => {
-    try {
-        const encodedAddress = encodeURIComponent(address);
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1`, {
-            headers: { 'User-Agent': 'Masjid-App/1.0 (contact@example.com)' }
-        });
-        if (!response.ok) throw new Error('Failed to connect to geocoding service.');
-        const data = await response.json();
-        if (data && data.length > 0) {
-            const { lat, lon } = data[0];
-            return { latitude: parseFloat(lat), longitude: parseFloat(lon) };
-        }
-        console.warn('Address could not be geocoded:', address);
-        return null;
-    } catch (error) {
-        console.error("Geocoding Error:", error);
-        return null;
-    }
-};
-
-
 export default function MasjidSingle() {
     const [activeTab, setActiveTab] = useState(1);
     const [masjidData, setMasjidData] = useState<Masjid | null>(null);
@@ -132,17 +129,25 @@ export default function MasjidSingle() {
                 const response = await fetch(`/api/masjids/${id}`);
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || "Failed to fetch masjid data.");
+                    throw new Error(errorData.message || "Failed to fetch masjid data.");
                 }
                 
-                const data: Masjid = await response.json();
+                const result = await response.json();
+                
+                // --- CORRECTED ---
+                // The data is nested inside the 'masjid' property of the response
+                console.log(result);
+                
+                const data: Masjid = result; 
+                
+                if (!data) {
+                    throw new Error("Masjid data not found in the API response.");
+                }
+                
                 setMasjidData(data);
 
-                const fullAddress = [data.address.addressLine1, data.address.city, data.location].filter(Boolean).join(', ');
-                const coords = await getCoordinatesFromAddress(fullAddress);
-
-                if (coords && data.prayerTimesConfiguration) {
-                    const coordinates = new adhan.Coordinates(coords.latitude, coords.longitude);
+                if (data.latitude && data.longitude && data.prayerTimesConfiguration) {
+                    const coordinates = new adhan.Coordinates(data.latitude, data.longitude);
                     const config = data.prayerTimesConfiguration;
                     const prayerParams = getAdhanMethod(config.method);
                     
@@ -249,6 +254,22 @@ export default function MasjidSingle() {
                                                     <br /><br />
                                                     The masjid serves not only as a prayer hall but also as a vibrant community center, offering educational programs for all ages, social services, and interfaith dialogue initiatives. Our mission is to foster a deeper understanding of Islam and to serve the needs of our community in accordance with Islamic principles of peace, compassion, and justice.
                                                 </p>
+                                                
+                                                <h4 className="text-xl fw-600 mt-60">Location Map</h4>
+                                                <div className="mt-20" style={{ height: '400px', width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
+                                                    <MapContainer
+                                                        center={[masjidData.latitude, masjidData.longitude]}
+                                                        zoom={15}
+                                                        style={{ height: "100%", width: "100%" }}
+                                                        scrollWheelZoom={false}
+                                                    >
+                                                        <TileLayer
+                                                            attribution='&copy; <a href="https://osm.org/copyright">OpenStreetMap</a>'
+                                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                                        />
+                                                        <Marker position={[masjidData.latitude, masjidData.longitude]} />
+                                                    </MapContainer>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -272,9 +293,9 @@ export default function MasjidSingle() {
                                                 ) : (
                                                     <div className="text-center mt-32 py-4 px-3" style={{ background: '#FFFBEB', border: '1px solid #FEEBC8', borderRadius: '8px' }}>
                                                         <Icon.AlertTriangle size={32} className="mx-auto" style={{ color: '#F59E0B' }} />
-                                                        <h5 className="fw-600 mt-3" style={{ color: '#B45309' }}>Location Not Found</h5>
+                                                        <h5 className="fw-600 mt-3" style={{ color: '#B45309' }}>Coordinates Not Available</h5>
                                                         <p className="mt-2 text-dark">
-                                                            We could not find the exact location for this address to calculate prayer times.
+                                                            We could not calculate prayer times because the exact coordinates for this masjid are missing.
                                                         </p>
                                                     </div>
                                                 )}
@@ -285,7 +306,7 @@ export default function MasjidSingle() {
                                         <div className="row justify-center">
                                             <div className="col-xl-8 col-lg-9 col-md-11">
                                                 <h4 className="text-xl fw-600">Available Adhan Sounds</h4>
-                                                {masjidData.adhanFiles.length > 0 ? (
+                                                {masjidData.adhanFiles && masjidData.adhanFiles.length > 0 ? (
                                                     <ul className="list-group mt-20">
                                                         {masjidData.adhanFiles.map(file => (
                                                             <li key={file.id} className="list-group-item d-flex justify-content-between align-items-center py-3">
@@ -309,4 +330,3 @@ export default function MasjidSingle() {
         </Layout>
     );
 }
-

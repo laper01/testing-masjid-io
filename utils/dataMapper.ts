@@ -3,37 +3,44 @@ import { Masjid } from '@/types/masjids';
 
 // Converts the API's snake_case response to the camelCase format for the frontend
 export const mapApiToForm = (apiData: any): Masjid => {
+  const address = apiData.address || {};
+  const phoneNumber = apiData.phone_number || {};
+  const prayerConfig = apiData.prayer_times_configuration || {};
+  const adjustments = prayerConfig.adjustments || {};
+
   return {
     id: apiData.id,
     name: apiData.name,
     location: apiData.location,
     isVerified: apiData.is_verified,
+    latitude: apiData.latitude, // ADDED
+    longitude: apiData.longitude, // ADDED
     address: {
-      addressLine1: apiData.address?.address_line_1,
-      addressLine2: apiData.address?.address_line_2,
-      city: apiData.address?.city,
-      postalCode: apiData.address?.postal_code,
-      countryCode: apiData.address?.country_code,
-      zoneCode: apiData.address?.zone_code || '',
+      addressLine1: address.address_line_1,
+      addressLine2: address.address_line_2,
+      city: address.city,
+      postalCode: address.postal_code,
+      countryCode: address.country_code,
+      zoneCode: address.zone_code || '',
     },
     phoneNumber: {
-      countryCode: apiData.phone_number?.country_code,
-      number: apiData.phone_number?.number,
+      countryCode: phoneNumber.country_code,
+      number: phoneNumber.number,
     },
     prayerConfig: {
-      name: apiData.prayer_times_configuration?.name,
-      method: apiData.prayer_times_configuration?.method,
-      fajrAngle: apiData.prayer_times_configuration?.fajr_angle,
-      ishaAngle: apiData.prayer_times_configuration?.isha_angle,
-      ishaInterval: apiData.prayer_times_configuration?.isha_interval,
-      asrMethod: apiData.prayer_times_configuration?.asr_method,
-      highLatitudeRule: apiData.prayer_times_configuration?.high_latitude_rule,
+      name: prayerConfig.name,
+      method: prayerConfig.method,
+      fajrAngle: prayerConfig.fajr_angle,
+      ishaAngle: prayerConfig.isha_angle,
+      ishaInterval: prayerConfig.isha_interval,
+      asrMethod: prayerConfig.asr_method,
+      highLatitudeRule: prayerConfig.high_latitude_rule,
       adjustments: {
-        fajrAdjustment: apiData.prayer_times_configuration?.adjustments?.fajr,
-        dhuhrAdjustment: apiData.prayer_times_configuration?.adjustments?.dhuhr,
-        asrAdjustment: apiData.prayer_times_configuration?.adjustments?.asr,
-        maghribAdjustment: apiData.prayer_times_configuration?.adjustments?.maghrib,
-        ishaAdjustment: apiData.prayer_times_configuration?.adjustments?.isha,
+        fajrAdjustment: adjustments.fajr,
+        dhuhrAdjustment: adjustments.dhuhr,
+        asrAdjustment: adjustments.asr,
+        maghribAdjustment: adjustments.maghrib,
+        ishaAdjustment: adjustments.isha,
       },
     },
     createdAt: apiData.created_at,
@@ -47,6 +54,8 @@ export const mapFormToApi = (formData: any): any => {
     name: formData.name,
     location: formData.location,
     is_verified: formData.isVerified,
+    latitude: String(formData.latitude), // ADDED and converted to string
+    longitude: String(formData.longitude), // ADDED and converted to string
     address: {
       address_line_1: formData.address.addressLine1,
       address_line_2: formData.address.addressLine2,
