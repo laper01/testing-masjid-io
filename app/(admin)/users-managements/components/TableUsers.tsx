@@ -21,8 +21,7 @@ import type { ColumnDef, PaginationState } from '@tanstack/react-table'
 import IconifyIcon from '@/components/wrappers/IconifyIcon'
 import Link from 'next/link'
 
-// 1. Definisikan tipe TypeScript agar sesuai dengan respons API Anda
-// Catatan: Saya berasumsi API Anda juga menyertakan 'id' untuk setiap pengguna agar tautan edit/hapus berfungsi.
+
 type User = {
   id: string
   email: string

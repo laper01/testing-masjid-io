@@ -1,50 +1,35 @@
-import IconifyIcon from '@/components/wrappers/IconifyIcon'
-import { Button } from 'react-bootstrap'
+'use client'
 
-// Define the props type for clarity
+import IconifyIcon from '@/components/wrappers/IconifyIcon';
+
 type SidePanelProps = {
-  createNewEvent: () => void
-}
+  createNewEvent: () => void;
+};
 
 const SidePanel = ({ createNewEvent }: SidePanelProps) => {
-  // --- Updated externalEvents array for an Islamic/Masjid context ---
-  const externalEvents = [
-    {}
-  ]
-
   return (
     <>
-      {/* --- Button to create a new custom event --- */}
       <div className="d-grid">
-
-        <a href={`/event-management/create`} className="btn btn-primary btn-lg">
+        <button className="btn btn-primary btn-lg" onClick={createNewEvent}>
           <IconifyIcon icon="mdi:plus-circle" /> Create New Event
-        </a>
+        </button>
       </div>
-
-      {/* --- List of draggable preset events --- */}
-      <div id="external-events" className="mt-3">
-        <p className="text-muted">Add event onto the masjid.</p>
-
-      </div>
-
-      {/* --- "How It Works" section with contextual instructions --- */}
       <div className="mt-5 d-none d-xl-block">
-        <h5 className="text-center">How to Use the Calendar</h5>
+        <h5 className="text-center">How to Use</h5>
         <ul className="ps-3">
           <li className="text-muted mb-3">
-            To schedule a prayer or community event, simply  by clicking the <strong>"Create New Event"</strong> or clik day in calendar button.
+            Click the <strong>"Create New Event"</strong> button to add a new entry.
+          </li>
+           <li className="text-muted mb-3">
+            Click on any empty date on the calendar to schedule an event for that day.
           </li>
           <li className="text-muted mb-3">
-            For custom entries like a special date far onto future, click the <strong>"Create New Event"</strong> button and fill in the details.
-          </li>
-          <li className="text-muted mb-3">
-            You can <strong>click on any event</strong> already on the calendar to view, edit its details, or remove it.
+            Click on an <strong>existing event</strong> to view, edit, or delete it.
           </li>
         </ul>
       </div>
     </>
-  )
-}
+  );
+};
 
-export default SidePanel
+export default SidePanel;

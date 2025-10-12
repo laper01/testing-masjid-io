@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
 
     // 4. Define the base URL for the real backend.
-    const api_url = `http://198.199.81.24/api/v1/list-users`;
+    const api_url = `${process.env.NEXT_PUBLIC_API_URL}list-users`;
 
     // 5. Construct the final URL with the forwarded query parameters.
     const fullUrl = `${api_url}?${searchParams.toString()}`;

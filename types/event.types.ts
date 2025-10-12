@@ -1,4 +1,4 @@
-export interface EventType {
+export type EventType = {
   id: string;
   masjidId: string;
   name: string;
@@ -10,4 +10,4 @@ export interface EventType {
   livestreamLink: string | null;
   createTime: string;
   updateTime: string;
-}
+};

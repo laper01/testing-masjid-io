@@ -1,203 +1,171 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Formik, Form as FormikForm, Field, ErrorMessage } from 'formik'
-import * as Yup from 'yup'
-import { Button, Card, Col, Form, Row, Alert, Spinner } from 'react-bootstrap'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect } from 'react';
+import { Formik, Form as FormikForm, Field, ErrorMessage } from 'formik';
+import * as Yup from 'yup';
+import { Button, Modal, Row, Col, Form, Spinner } from 'react-bootstrap';
+import { toast } from 'react-hot-toast';
+import { EventType } from '@/types/event.types';
 
-// --- PERUBAHAN: Tipe diperbarui untuk menyertakan phoneNumber ---
-type Masjid = {
-  id: string
-  name: string
-  location: string
-  address: {
-    city: string
-    addressLine1: string
-  }
-  phoneNumber: {
-    countryCode: string
-    number: string
-  }
-}
 
-// Skema validasi menggunakan Yup
-const eventValidationSchema = Yup.object().shape({
-  masjid_id: Yup.string().required('Masjid is required'),
-  name: Yup.string().required('Event name is required'),
-  description: Yup.string().required('Description is required'),
-  start_time: Yup.date().required('Start time is required'),
-  end_time: Yup.date()
-    .required('End time is required')
-    .min(Yup.ref('start_time'), 'End time must be after start time'),
-  gender_restriction: Yup.string().required('Gender restriction is required'),
-  is_paid: Yup.boolean(),
-  requires_rsvp: Yup.boolean(),
-  max_participants: Yup.number()
-    .typeError('Must be a number')
-    .min(0, 'Cannot be negative')
-    .integer('Must be an integer'),
-  livestream_link: Yup.string().url('Must be a valid URL'),
-})
+type Masjid = { id: string; name: string };
 
-// Komponen Formulir Utama
-export default function CreateEventForm() {
-  const router = useRouter()
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [masjids, setMasjids] = useState<Masjid[]>([])
-  const [loadingMasjids, setLoadingMasjids] = useState(true)
-
-  // Mengambil daftar masjid saat komponen dimuat
-  useEffect(() => {
-    const fetchMasjids = async () => {
-      try {
-        const response = await fetch('/api/masjids/get')
-        if (!response.ok) {
-          throw new Error('Failed to fetch masjids')
-        }
-        const result = await response.json()
-        if (result.listMasjidResponse?.masjids) {
-          setMasjids(result.listMasjidResponse.masjids)
-        }
-      } catch (error) {
-        setErrorMessage('Could not load masjids list.')
-      } finally {
-        setLoadingMasjids(false)
-      }
-    }
-    fetchMasjids()
-  }, [])
-
-  // Nilai awal untuk formulir
-  const initialValues = {
-    masjid_id: '',
-    name: '',
-    description: '',
-    start_time: '',
-    end_time: '',
-    gender_restriction: 'NO_RESTRICTION',
-    is_paid: false,
-    requires_rsvp: true,
-    max_participants: 100,
-    livestream_link: '',
-  }
-
-  const handleSubmit = async (values: typeof initialValues, { setSubmitting }: any) => {
-    setErrorMessage(null)
+// Helper to format UTC dates for datetime-local input
+const toLocalISOString = (dateString?: string): string => {
+    if (!dateString) return '';
     try {
-
-        const payload = {
-        ...values,
-        start_time: new Date(values.start_time).toISOString(),
-        end_time: new Date(values.end_time).toISOString(),
-      };
-
-      const response = await fetch('/api/event/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.message || `Request failed with status ${response.status}`)
-      }
-
-      alert('Event created successfully!')
-      router.push('/event-management') // Arahkan ke halaman daftar event setelah berhasil
-    } catch (error: any) {
-      setErrorMessage(error.message || 'Failed to submit the form.')
-    } finally {
-      setSubmitting(false)
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        const offset = date.getTimezoneOffset();
+        const localDate = new Date(date.getTime() - offset * 60 * 1000);
+        return localDate.toISOString().slice(0, 16);
+    } catch (e) {
+        return '';
     }
-  }
+};
 
-  // Komponen bantuan untuk kolom formulir
-  const FormField = ({ name, label, type = 'text', as = 'input', children, ...props }: any) => (
-    <Form.Group as={Col} md="6" controlId={name} className="mb-3">
-      <Form.Label>{label}</Form.Label>
-      <Field name={name} type={type} as={as === 'select' ? Form.Select : as === 'textarea' ? Form.Control : Form.Control} {...props}>
-        {children}
-      </Field>
-      <ErrorMessage name={name} component={Form.Text} className="text-danger" />
-    </Form.Group>
-  )
+const eventValidationSchema = Yup.object().shape({
+    masjidId: Yup.string().required('Masjid is required'),
+    name: Yup.string().required('Event name is required'),
+    description: Yup.string().required('Description is required'),
+    startTime: Yup.date().required('Start time is required'),
+    endTime: Yup.date().required('End time is required').min(Yup.ref('startTime'), 'End time must be after start time'),
+    maxParticipants: Yup.number().typeError('Must be a number').min(0, 'Cannot be negative').integer('Must be an integer'),
+    livestreamLink: Yup.string().url('Must be a valid URL').nullable(),
+});
 
-  return (
-    <Card>
-      <Card.Header>
-        <h4 className="header-title">Create New Event</h4>
-        <p className="text-muted mb-0">Fill out the form below to add a new event.</p>
-      </Card.Header>
-      <Card.Body>
-        <Formik initialValues={initialValues} validationSchema={eventValidationSchema} onSubmit={handleSubmit}>
-          {({ isSubmitting }) => (
-            <FormikForm>
-              <h5 className="mb-3">Event Details</h5>
-              <Row>
-                <FormField name="masjid_id" label="Masjid" as="select" disabled={loadingMasjids}>
-                  <option value="">{loadingMasjids ? 'Loading masjids...' : 'Select a Masjid'}</option>
-                  {/* --- PERUBAHAN: Label dropdown diperbarui untuk menyertakan nomor telepon --- */}
-                  {masjids.map((masjid) => (
-                    <option key={masjid.id} value={masjid.id}>
-                      {masjid.name} - {masjid.address.addressLine1} (+{masjid.phoneNumber.countryCode} {masjid.phoneNumber.number})
-                    </option>
-                  ))}
-                </FormField>
-                <FormField name="name" label="Event Name" placeholder="e.g., Grand Recitation" />
-              </Row>
-              <Row>
-                <FormField name="description" label="Description" as="textarea" rows={3} placeholder="Enter a brief description of the event" />
-              </Row>
+type AddEditEventModalProps = {
+    show: boolean;
+    isEditable: boolean;
+    eventData: Partial<EventType> | null;
+    onClose: () => void;
+    onAddEvent: (data: Partial<EventType>) => Promise<void>;
+    onUpdateEvent: (data: Partial<EventType>) => Promise<void>;
+    onRemoveEvent: () => Promise<void>;
+};
 
-              <hr className="my-4" />
+export default function AddEditEventModal({ show, isEditable, eventData, onClose, onAddEvent, onUpdateEvent, onRemoveEvent }: AddEditEventModalProps) {
+    const [masjids, setMasjids] = useState<Masjid[]>([]);
+    const [loadingMasjids, setLoadingMasjids] = useState(false);
 
-              <h5 className="mb-3">Date and Time</h5>
-              <Row>
-                <FormField name="start_time" label="Start Time" type="datetime-local" />
-                <FormField name="end_time" label="End Time" type="datetime-local" />
-              </Row>
+    useEffect(() => {
+        if (show) {
+            setLoadingMasjids(true);
+            fetch('/api/masjids') // Switched to the correct endpoint for listing masjids
+                .then(res => res.json())
+                .then(data => setMasjids(data.data || []))
+                .catch(() => toast.error('Failed to load masjids.'))
+                .finally(() => setLoadingMasjids(false));
+        }
+    }, [show]);
 
-              <hr className="my-4" />
+    const initialValues = {
+        masjidId: eventData?.masjidId || '',
+        name: eventData?.name || '',
+        description: eventData?.description || '',
+        startTime: toLocalISOString(eventData?.startTime),
+        endTime: toLocalISOString(eventData?.endTime),
+        requiresRsvp: eventData?.requiresRsvp ?? true,
+        maxParticipants: eventData?.maxParticipants ?? 100,
+        livestreamLink: eventData?.livestreamLink || '',
+    };
 
-              <h5 className="mb-3">Logistics & Restrictions</h5>
-              <Row>
-                <FormField name="gender_restriction" label="Gender Restriction" as="select">
-                  <option value="NO_RESTRICTION">No Restriction</option>
-                  <option value="MALE_ONLY">Male Only</option>
-                  <option value="FEMALE_ONLY">Female Only</option>
-                </FormField>
-                <FormField name="max_participants" label="Max Participants" type="number" placeholder="e.g., 100" />
-              </Row>
-              <Row>
-                <FormField name="livestream_link" label="Livestream Link (Optional)" type="url" placeholder="https://..." />
-              </Row>
-              <Row className="align-items-center">
-                <Col md={6} className="mb-3">
-                  <Field as={Form.Check} type="checkbox" name="is_paid" id="is_paid" label="This is a paid event" />
-                </Col>
-                <Col md={6} className="mb-3">
-                  <Field as={Form.Check} type="checkbox" name="requires_rsvp" id="requires_rsvp" label="Requires RSVP" />
-                </Col>
-              </Row>
+    const handleSubmit = (values: any) => {
+        const payload = {
+            id: eventData?.id,
+            ...values,
+            startTime: new Date(values.startTime).toISOString(),
+            endTime: new Date(values.endTime).toISOString(),
+        };
 
-              <div className="mt-3">
-                {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
-                <Button type="submit" disabled={isSubmitting} variant="primary">
-                  {isSubmitting ? (
-                    <>
-                      <Spinner as="span" animation="border" size="sm" /> Submitting...
-                    </>
-                  ) : (
-                    'Create Event'
-                  )}
-                </Button>
-              </div>
-            </FormikForm>
-          )}
-        </Formik>
-      </Card.Body>
-    </Card>
-  )
+        if (isEditable) {
+            onUpdateEvent(payload);
+        } else {
+            onAddEvent(payload);
+        }
+    };
+
+    return (
+        <Modal show={show} onHide={onClose} centered size="lg">
+            <Modal.Header closeButton>
+                <Modal.Title>{isEditable ? 'Edit Event' : 'Add New Event'}</Modal.Title>
+            </Modal.Header>
+            <Formik
+                initialValues={initialValues}
+                validationSchema={eventValidationSchema}
+                onSubmit={handleSubmit}
+                enableReinitialize
+            >
+                {({ isSubmitting }) => (
+                    <FormikForm>
+                        <Modal.Body>
+                            {/* --- LAYOUT REFACTORED FOR BETTER APPEARANCE --- */}
+                            <Row>
+                                <Col md={12} className="mb-3">
+                                    <Form.Label htmlFor="masjidId">Masjid</Form.Label>
+                                    <Field as={Form.Select} id="masjidId" name="masjidId" disabled={loadingMasjids || isEditable}>
+                                        <option value="">{loadingMasjids ? 'Loading...' : 'Select a Masjid'}</option>
+                                        {masjids.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                                    </Field>
+                                    <ErrorMessage name="masjidId" component={Form.Text} className="text-danger" />
+                                </Col>
+
+                                <Col md={12} className="mb-3">
+                                    <Form.Label htmlFor="name">Event Name</Form.Label>
+                                    <Field as={Form.Control} id="name" name="name" placeholder="e.g., Grand Recitation" />
+                                    <ErrorMessage name="name" component={Form.Text} className="text-danger" />
+                                </Col>
+
+                                <Col md={12} className="mb-3">
+                                    <Form.Label htmlFor="description">Description</Form.Label>
+                                    <Field as="textarea" className="form-control" id="description" name="description" rows={3} placeholder="Enter a brief description..."/>
+                                    <ErrorMessage name="description" component={Form.Text} className="text-danger" />
+                                </Col>
+
+                                <Col md={6} className="mb-3">
+                                    <Form.Label htmlFor="startTime">Start Time</Form.Label>
+                                    <Field as={Form.Control} type="datetime-local" id="startTime" name="startTime" />
+                                    <ErrorMessage name="startTime" component={Form.Text} className="text-danger" />
+                                </Col>
+
+                                <Col md={6} className="mb-3">
+                                    <Form.Label htmlFor="endTime">End Time</Form.Label>
+                                    <Field as={Form.Control} type="datetime-local" id="endTime" name="endTime" />
+                                    <ErrorMessage name="endTime" component={Form.Text} className="text-danger" />
+                                </Col>
+
+                                <Col md={6} className="mb-3">
+                                    <Form.Label htmlFor="maxParticipants">Max Participants</Form.Label>
+                                    <Field as={Form.Control} type="number" id="maxParticipants" name="maxParticipants" placeholder="e.g., 100" />
+                                    <ErrorMessage name="maxParticipants" component={Form.Text} className="text-danger" />
+                                </Col>
+
+                                <Col md={6} className="mb-3">
+                                    <Form.Label htmlFor="livestreamLink">Livestream Link</Form.Label>
+                                    <Field as={Form.Control} type="url" id="livestreamLink" name="livestreamLink" placeholder="https://" />
+                                    <ErrorMessage name="livestreamLink" component={Form.Text} className="text-danger" />
+                                </Col>
+                                
+                                <Col md={12} className="mt-2">
+                                     <Field as={Form.Check} type="checkbox" name="requiresRsvp" id="requiresRsvp" label="Requires RSVP" />
+                                </Col>
+                            </Row>
+                        </Modal.Body>
+                        <Modal.Footer>
+                            {isEditable && (
+                                <Button variant="danger" onClick={onRemoveEvent} disabled={isSubmitting} className="me-auto">
+                                    Delete
+                                </Button>
+                            )}
+                            <Button variant="light" onClick={onClose}>Close</Button>
+                            <Button type="submit" variant="primary" disabled={isSubmitting}>
+                                {isSubmitting ? <Spinner size="sm" /> : (isEditable ? 'Save Changes' : 'Create Event')}
+                            </Button>
+                        </Modal.Footer>
+                    </FormikForm>
+                )}
+            </Formik>
+        </Modal>
+    );
 }
+

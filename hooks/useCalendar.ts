@@ -1,242 +1,204 @@
-// src/hooks/useCalendar.ts
-
 'use client'
-import { EventInput, EventClickArg, EventDropArg, DateInput } from '@fullcalendar/core'
-import { DateClickArg, Draggable, type DropArg } from '@fullcalendar/interaction'
-import { useEffect, useState } from 'react'
 
-// You might not need defaultEvents anymore, or you can keep it as a fallback.
-// import { defaultEvents } from './data' 
-
-export type SubmitEventType = {
-  title: string
-  category: string
-}
-
-// Type for the raw API event data
-interface ApiEvent {
-  id: string;
-  name: string;
-  startTime: string;
-  endTime: string;
-  // ... any other properties from your API
-}
+import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-hot-toast';
+import type { EventInput, EventClickArg, EventDropArg } from '@fullcalendar/core';
+import { Draggable, type DateClickArg, type DropArg } from '@fullcalendar/interaction';
+import { EventType } from '@/types/event.types';
 
 
-const useCalendar = () => {
-  // --- STATE MANAGEMENT ---
-  const [show, setShow] = useState<boolean>(false)
-  const [isEditable, setIsEditable] = useState<boolean>(false)
+// Helper function to format API data into FullCalendar's event format
+const formatEventForCalendar = (apiEvent: EventType): EventInput => ({
+  id: apiEvent.id,
+  title: apiEvent.name,
+  start: apiEvent.startTime,
+  end: apiEvent.endTime,
+  className: 'bg-primary', // Default class, can be customized
+  extendedProps: apiEvent, // Store the original API object for easy access
+});
 
-  // Add loading and error states for API calls
+export const useCalendar = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // This will now be populated from the API
-  const [events, setEvents] = useState<EventInput[]>([]) 
-  const [eventData, setEventData] = useState<EventInput>()
-  const [dateInfo, setDateInfo] = useState<DateClickArg>()
+  const [events, setEvents] = useState<EventInput[]>([]);
+  const [show, setShow] = useState<boolean>(false);
+  const [isEditable, setIsEditable] = useState<boolean>(false);
+  const [eventData, setEventData] = useState<Partial<EventType> | null>(null);
+  const [dateInfo, setDateInfo] = useState<DateClickArg | null>(null);
 
   // --- API DATA FETCHING ---
-  useEffect(() => {
-    const fetchAndSetEvents = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/event/get'); // Your API endpoint
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const result = await response.json();
-        
-        // Transform the API data to match FullCalendar's format
-        const formattedEvents = result.data.map((event: ApiEvent): EventInput => ({
-          id: event.id,
-          title: event.name,
-          start: event.startTime,
-          end: event.endTime,
-          // You can map other properties to `className` or `extendedProps`
-          // className: 'bg-primary' 
-        }));
-
-        setEvents(formattedEvents);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message);
-        console.error("Failed to fetch events:", err);
-      } finally {
-        setLoading(false);
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/events');
+      if (!response.ok) {
+        throw new Error('Failed to fetch events from the server.');
       }
-    };
+      const result = await response.json();
+      
+      const formattedEvents = (result.data || []).map(formatEventForCalendar);
+      setEvents(formattedEvents);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    fetchAndSetEvents();
-  }, []); // Empty dependency array ensures this runs only once
-
-
-  // --- Draggable Events Effect (No changes needed here) ---
   useEffect(() => {
-    const draggableEl = document.getElementById('external-events')
+    fetchEvents();
+  }, [fetchEvents]);
+  
+  // Effect for making side panel events draggable
+  useEffect(() => {
+    const draggableEl = document.getElementById('external-events');
     if (draggableEl) {
       new Draggable(draggableEl, {
         itemSelector: '.external-event',
-      })
+      });
     }
-  }, [])
+  }, []);
 
+  // --- MODAL & EVENT HANDLERS ---
 
-  // --- MODAL & EVENT HANDLERS (with API calls) ---
-  
   const onCloseModal = () => {
-    setEventData(undefined)
-    setDateInfo(undefined)
-    setShow(false)
-  }
+    setShow(false);
+    setEventData(null);
+    setDateInfo(null);
+    setIsEditable(false);
+  };
 
-  const onOpenModal = () => setShow(true)
-
+  const createNewEvent = () => {
+    setIsEditable(false);
+    setEventData({}); // Start with an empty object for a new event
+    setShow(true);
+  };
+  
   const onDateClick = (arg: DateClickArg) => {
-    setDateInfo(arg)
-    onOpenModal()
-    setIsEditable(false)
-  }
+    setIsEditable(false);
+    setEventData({ startTime: arg.dateStr, endTime: arg.dateStr });
+    setDateInfo(arg);
+    setShow(true);
+  };
 
   const onEventClick = (arg: EventClickArg) => {
-    const event = {
-      id: String(arg.event.id),
-      title: arg.event.title,
-      className: arg.event.classNames[0],
-      start: arg.event.startStr,
-      end: arg.event.endStr
+    setIsEditable(true);
+    const clickedEvent = events.find(e => e.id === arg.event.id);
+    if (clickedEvent) {
+        setEventData(clickedEvent.extendedProps as EventType);
     }
-    setEventData(event)
-    setIsEditable(true)
-    onOpenModal()
-  }
+    setShow(true);
+  };
+  
+  // --- API-DRIVEN CRUD OPERATIONS ---
 
-  // This function adds a new event
-  const onAddEvent = async (data: SubmitEventType) => {
-    const newEventData = {
-      name: data.title, // Maps to `name` in your API
-      startTime: dateInfo?.dateStr || new Date().toISOString(),
-      // You may need an endTime as well depending on your API
-      // endTime: ..., 
-      description: '...', // Other required fields
+  const onAddEvent = async (data: Partial<EventType>) => {
+    try {
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Failed to create the event.');
+      }
+      toast.success('Event created successfully!');
+      fetchEvents();
+      onCloseModal();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const onUpdateEvent = async (data: Partial<EventType>) => {
+    if (!data.id) return;
+    try {
+      const response = await fetch(`/api/events/${data.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const errorResult = await response.json();
+        throw new Error(errorResult.error || 'Failed to update the event.');
+      }
+      toast.success('Event updated successfully!');
+      fetchEvents();
+      onCloseModal();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+  
+  const onRemoveEvent = async (eventId: string) => {
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+         const errorResult = await response.json().catch(() => ({}));
+         throw new Error(errorResult.error || 'Failed to delete the event.');
+      }
+      toast.success('Event deleted successfully!');
+      fetchEvents();
+      onCloseModal();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const onEventDrop = async (arg: EventDropArg) => { 
+    const { event } = arg;
+    const updatedEvent = {
+        startTime: event.startStr,
+        endTime: event.endStr || event.startStr,
     };
 
     try {
-      // 1. Call your API to create the event
-      // const response = await fetch('/api/event/create', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(newEventData),
-      // });
-      // if (!response.ok) throw new Error('Failed to save event');
-      // const savedEvent = await response.json(); // The event returned from the API with the final ID
+      const response = await fetch(`/api/events/${event.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEvent),
+      });
 
-      // 2. Update local state with the successful response (Optimistic update shown below)
-      console.log('TODO: Call POST API with:', newEventData);
-      const tempEvent = {
-        id: String(Date.now()), // Use a temporary ID, or the one from `savedEvent`
-        title: data.title,
-        start: dateInfo?.date ?? new Date(),
-        className: data.category,
+      if (!response.ok) {
+        throw new Error('Failed to update event time.');
       }
-      setEvents([...events, tempEvent]);
-
-      onCloseModal();
-
-    } catch (error) {
-      console.error("Error adding event:", error);
-      // Optionally show an error message to the user
+      toast.success('Event time updated!');
+      fetchEvents();
+    } catch (error: any) {
+      toast.error(error.message);
+      arg.revert();
     }
-  }
+  };
 
-  // This function updates an existing event
-  const onUpdateEvent = async (data: SubmitEventType) => {
-    try {
-      // 1. Call your API to update the event
-      // const response = await fetch(`/api/event/update/${eventData?.id}`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ name: data.title, ... }),
-      // });
-      // if (!response.ok) throw new Error('Failed to update event');
-      
-      // 2. Update local state on success
-      console.log(`TODO: Call PUT API for event ${eventData?.id} with:`, data);
-      setEvents(
-        events.map((e) => e.id === eventData?.id ? { ...e, title: data.title, className: data.category } : e)
-      );
-      
-      onCloseModal();
-      setIsEditable(false);
+  const onDrop = (dropInfo: DropArg) => {
+    toast(`'${dropInfo.draggedEl.innerText}' was dropped.`);
+    setIsEditable(false);
+    setEventData({ startTime: dropInfo.dateStr, endTime: dropInfo.dateStr });
+    setDateInfo(null);
+    setShow(true);
+  };
 
-    } catch (error) {
-      console.error("Error updating event:", error);
-    }
-  }
-
-  // This function removes an event
-  const onRemoveEvent = async () => {
-    try {
-      // 1. Call your API to delete the event
-      // const response = await fetch(`/api/event/delete/${eventData?.id}`, { method: 'DELETE' });
-      // if (!response.ok) throw new Error('Failed to delete event');
-
-      // 2. Update local state on success
-      console.log(`TODO: Call DELETE API for event ${eventData?.id}`);
-      setEvents(events.filter((e) => e.id !== eventData?.id));
-      onCloseModal();
-
-    } catch (error) {
-      console.error("Error removing event:", error);
-    }
-  }
-  
-  // This function updates an event after dragging and dropping
-  const onEventDrop = async (arg: EventDropArg) => {
-    const { id, start, end } = arg.event;
-    try {
-        // 1. Call API to update the date
-        // await fetch(`/api/event/update/${id}`, {
-        //   method: 'PUT',
-        //   body: JSON.stringify({ startTime: start?.toISOString(), endTime: end?.toISOString() })
-        // });
-        
-        // 2. Update local state
-        console.log(`TODO: Call PUT API to update dates for event ${id}`);
-        const updatedEvents = events.map(e => e.id === id ? { ...e, start, end } : e);
-        // setEvents(updatedEvents);
-        
-    } catch(error) {
-        console.error("Error updating event drop:", error);
-        // If the API call fails, revert the change in the UI
-        arg.revert();
-    }
-  }
-
-  // --- RETURN VALUES ---
-  // Return the new loading and error states for the UI to use
   return {
-    events,
     loading,
     error,
+    events,
     show,
     isEditable,
     eventData,
     onCloseModal,
+    createNewEvent,
     onDateClick,
     onEventClick,
-    onEventDrop,
     onAddEvent,
     onUpdateEvent,
     onRemoveEvent,
-    // No changes to these handlers
-    onDrop: () => {},
-    createNewEvent: () => {
-      setIsEditable(false)
-      onOpenModal()
-    }
-  }
-}
+    onEventDrop,
+    onDrop,
+  };
+};
 
-export default useCalendar

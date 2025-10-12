@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     }
 
     // 4. Define the target URL for the real backend, using the user ID from the session.
-    const api_url = `http://198.199.81.24/api/v1/users/${userId}`;
+    const api_url = `${process.env.NEXT_PUBLIC_API_URL}users/${userId}`;
 
     // 5. Make the fetch request to the real backend.
     const apiResponse = await fetch(api_url, {

@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Peta Lokasi Saya - Ambil Koordinat</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+      #map { height: 90vh; width: 100%; }
+      body {
+        font-family: sans-serif;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .coords {
+        margin: 10px 0;
+        font-size: 16px;
+      }
+      input {
+        width: 150px;
+        padding: 5px;
+        margin: 0 5px;
+        text-align: center;
+      }
+      button {
+        padding: 5px 10px;
+        background: #0078ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #005fcc;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>📍 Peta Lokasi Saya (Geser Pin untuk Ubah Lokasi)</h3>
+    <div class="coords">
+      Latitude: <input type="text" id="lat" readonly>
+      Longitude: <input type="text" id="lng" readonly>
+      <button onclick="copyCoords()">Copy</button>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+      const map = L.map('map'); // Buat peta tanpa setView dulu
+      let marker;
+
+      // Tambahkan tile layer dari OpenStreetMap
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Fungsi utama untuk membuat / update marker
+      function setMarker(lat, lng) {
+        if (marker) map.removeLayer(marker);
+        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        updateInputs(lat, lng);
+
+        // Kalau marker digeser, update koordinat
+        marker.on('dragend', function(e) {
+          const pos = e.target.getLatLng();
+          updateInputs(pos.lat, pos.lng);
+        });
+
+        // Klik di peta juga bisa pindahkan marker
+        map.on('click', function(e) {
+          const { lat, lng } = e.latlng;
+          marker.setLatLng([lat, lng]);
+          updateInputs(lat, lng);
+        });
+      }
+
+      // Fungsi update input
+      function updateInputs(lat, lng) {
+        document.getElementById('lat').value = lat.toFixed(6);
+        document.getElementById('lng').value = lng.toFixed(6);
+      }
+
+      // Fungsi salin koordinat
+      function copyCoords() {
+        const lat = document.getElementById('lat').value;
+        const lng = document.getElementById('lng').value;
+        const text = `${lat}, ${lng}`;
+        navigator.clipboard.writeText(text);
+        alert("📋 Koordinat disalin: " + text);
+      }
+
+      // Ambil lokasi pengguna
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            map.setView([lat, lng], 15);
+            setMarker(lat, lng);
+          },
+          err => {
+            alert("⚠️ Tidak dapat mengakses lokasi kamu. Menampilkan posisi default (Jakarta).");
+            const lat = -6.200000;
+            const lng = 106.816666;
+            map.setView([lat, lng], 12);
+            setMarker(lat, lng);
+          },
+          { enableHighAccuracy: true }
+        );
+      } else {
+        alert('Browser tidak mendukung geolocation.');
+        const lat = -6.200000;
+        const lng = 106.816666;
+        map.setView([lat, lng], 12);
+        setMarker(lat, lng);
+      }
+    </script>
+  </body>
+</html>
