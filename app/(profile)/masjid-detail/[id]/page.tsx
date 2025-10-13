@@ -113,6 +113,7 @@ export default function MasjidSingle() {
     const [prayerTimes, setPrayerTimes] = useState<PrayerTimes | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [unauthorized, setUnauthorized] = useState(false);
 
     const params = useParams();
     const router = useRouter();
@@ -124,35 +125,43 @@ export default function MasjidSingle() {
         const fetchMasjidAndCalculateTimes = async () => {
             setLoading(true);
             setError(null);
-            
+            setUnauthorized(false);
+
             try {
                 const response = await fetch(`/api/masjids/${id}`);
+
+                if (response.status === 401) {
+                    setUnauthorized(true);
+                    setLoading(false);
+                    return; // Stop further execution
+                }
+
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.message || "Failed to fetch masjid data.");
                 }
-                
+
                 const result = await response.json();
-                
+
                 // --- CORRECTED ---
                 // The data is nested inside the 'masjid' property of the response
-                console.log(result);
-                
-                const data: Masjid = result; 
-                
+                // console.log(result);
+
+                const data: Masjid = result;
+
                 if (!data) {
                     throw new Error("Masjid data not found in the API response.");
                 }
-                
+
                 setMasjidData(data);
 
                 if (data.latitude && data.longitude && data.prayerTimesConfiguration) {
                     const coordinates = new adhan.Coordinates(data.latitude, data.longitude);
                     const config = data.prayerTimesConfiguration;
                     const prayerParams = getAdhanMethod(config.method);
-                    
+
                     prayerParams.highLatitudeRule = getHighLatitudeRule(config.high_latitude_rule);
-                    
+
                     if (config.adjustments) {
                         prayerParams.adjustments = {
                             fajr: config.adjustments.fajr || 0,
@@ -186,8 +195,30 @@ export default function MasjidSingle() {
     }, [id, router]);
 
     if (loading) return <Layout><div>Loading...</div></Layout>;
+
+        if (unauthorized) {
+        return (
+            <Layout>
+                <section className="pt-100 layout-pb-lg">
+                    <div className="container">
+                        <div className="row justify-center">
+                            <div className="col-xl-6 col-lg-8 text-center">
+                                <div className="py-80 px-40 rounded-8 bg-white shadow-3">
+                                    <Icon.Lock size={48} className="text-accent" />
+                                    <h2 className="text-30 fw-600 mt-20">Login Required</h2>
+                                    <p className="mt-10">You must be logged in to view the details for this page.</p>
+              
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </Layout>
+        );
+    }
     if (error) return <Layout><div>Error: {error}</div></Layout>;
     if (!masjidData) return <Layout><div>Masjid not found.</div></Layout>;
+    
 
     const fullAddressString = [
         masjidData.address.addressLine1,
@@ -205,7 +236,7 @@ export default function MasjidSingle() {
                         <div className="row y-gap-60 items-center">
                             <div className="col-lg-6">
                                 <div className="ratio ratio-62:60">
-                                    <Image width={0} height={0} sizes="100vw" style={{width: '100%', height: 'auto'}} className="absolute-full-center rounded-8 object-fit-cover" src="/img/forms/bg.png" alt="Masjid image" />
+                                    <Image width={0} height={0} sizes="100vw" style={{ width: '100%', height: 'auto' }} className="absolute-full-center rounded-8 object-fit-cover" src="/img/forms/bg.png" alt="Masjid image" />
                                 </div>
                             </div>
                             <div className="col-lg-6">
@@ -218,7 +249,7 @@ export default function MasjidSingle() {
                                             </span>
                                         )}
                                     </h2>
-                                    
+
                                     <div className="mt-30">
                                         <p>A central place of worship and community gathering in {masjidData.address.city}, {masjidData.location}. Welcoming visitors and locals for daily prayers and events.</p>
                                     </div>
@@ -254,7 +285,7 @@ export default function MasjidSingle() {
                                                     <br /><br />
                                                     The masjid serves not only as a prayer hall but also as a vibrant community center, offering educational programs for all ages, social services, and interfaith dialogue initiatives. Our mission is to foster a deeper understanding of Islam and to serve the needs of our community in accordance with Islamic principles of peace, compassion, and justice.
                                                 </p>
-                                                
+
                                                 <h4 className="text-xl fw-600 mt-60">Location Map</h4>
                                                 <div className="mt-20" style={{ height: '400px', width: '100%', borderRadius: '8px', overflow: 'hidden' }}>
                                                     <MapContainer

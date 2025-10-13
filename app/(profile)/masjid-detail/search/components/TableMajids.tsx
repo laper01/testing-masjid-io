@@ -13,7 +13,6 @@ import {
   Alert,
   Form,
   InputGroup,
-  Accordion,
 } from 'react-bootstrap'
 import React, { useState, useEffect, useCallback } from 'react'
 import ReactTable from '@/components/Table'
@@ -53,10 +52,10 @@ const columns: ColumnDef<Masjid>[] = [
     header: 'Masjid Name',
     accessorKey: 'name',
     cell: ({ row }) => (
-        <div>
-            <p className="m-0 fs-8 fw-semibold">{row.original.name}</p>
-            <p className="m-0 text-muted fs-14">{row.original.location}</p>
-        </div>
+      <div>
+        <p className="m-0 fs-8 fw-semibold">{row.original.name}</p>
+        <p className="m-0 text-muted fs-14">{row.original.location}</p>
+      </div>
     )
   },
   {
@@ -77,15 +76,15 @@ const columns: ColumnDef<Masjid>[] = [
     id: 'actions',
     header: 'Actions',
     cell: ({ row }) => (
-      <ButtonGroup size="sm">
+      <Button variant="outline-success">
         <Link href={`/masjid-detail/${row.original.id}`} passHref>
-          <Button variant="outline-success">
-            <span>
-              <IconifyIcon icon="mdi:eye-outline" />
-            </span>
-          </Button>
+
+          <span>
+            <IconifyIcon icon="mdi:eye-outline" />
+          </span>
+
         </Link>
-      </ButtonGroup>
+      </Button>
     ),
   },
 ]
@@ -100,7 +99,7 @@ export default function TableMasjids({ initialSearchTerm }: TableMasjidsProps) {
   const [masjids, setMasjids] = useState<Masjid[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
+
   const [filters, setFilters] = useState<Filters>({
     name: initialSearchTerm || '',
     bounding_box: null,
@@ -128,7 +127,7 @@ export default function TableMasjids({ initialSearchTerm }: TableMasjidsProps) {
       page: (pagination.pageIndex + 1).toString(),
       limit: pagination.pageSize.toString(),
     })
-    
+
     if (debouncedFilters.name) {
       params.append('name', debouncedFilters.name)
     }
@@ -159,7 +158,7 @@ export default function TableMasjids({ initialSearchTerm }: TableMasjidsProps) {
   }, [pagination, debouncedFilters])
 
   const handleLocationChange = ({ lat, lng }: { lat: number; lng: number }) => {
-    const radius = 0.05; 
+    const radius = 0.05;
     const newBoundingBox: BoundingBox = {
       south_west: { latitude: lat - radius, longitude: lng - radius },
       north_east: { latitude: lat + radius, longitude: lng + radius },
@@ -173,74 +172,70 @@ export default function TableMasjids({ initialSearchTerm }: TableMasjidsProps) {
 
   return (
     <div className="container mt-4 mb-4">
-        <Row>
-            <Col>
-                <Card className="shadow-sm">
-                    <CardHeader className="bg-light p-3">
-                        <Row className="justify-content-between align-items-center gy-3">
-                            <Col xs={12}>
-                                <InputGroup>
-                                    <Form.Control 
-                                      type="text" 
-                                      placeholder="Search by name..." 
-                                      value={filters.name} 
-                                      onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))}
-                                    />
-                                    <Button variant="primary" onClick={() => setDebouncedFilters(filters)}>
-                                      <IconifyIcon icon="mdi:magnify" />
-                                    </Button>
-                                </InputGroup>
-                            </Col>
-                        </Row>
-                    </CardHeader>
-                  <Accordion>
-                    <Accordion.Item eventKey="0">
-                      <Accordion.Header>
-                        <IconifyIcon icon="mdi:map-marker-outline" className="me-2"/>
-                        Filter by Location
-                      </Accordion.Header>
-                      <Accordion.Body>
-                        <p className="text-muted small">Click or drag the marker on the map to search for masjids in that area. Results will update automatically.</p>
-                        <LocationPickerSearch onLocationChange={handleLocationChange} />
-                        <Button 
-                          variant="outline-secondary" 
-                          size="sm" 
-                          className="mt-3" 
-                          onClick={() => setFilters(prev => ({ ...prev, bounding_box: null }))}
-                          disabled={!filters.bounding_box}
-                        >
-                          Clear Map Filter
-                        </Button>
-                      </Accordion.Body>
-                    </Accordion.Item>
-                  </Accordion>
-                    <CardBody>
-                        {error && <Alert variant="danger">{error}</Alert>}
-                        {loading ? (
-                            <div className="text-center py-5">
-                                <Spinner animation="border" variant="primary" role="status">
-                                    <span className="visually-hidden">Loading...</span>
-                                </Spinner>
-                            </div>
-                        ) : (
-                            <ReactTable<Masjid>
-                                columns={columns}
-                                data={masjids}
-                                rowsPerPageList={sizePerPageList}
-                                tableClass="table-striped table-hover"
-                                showPagination
-                                pagination={pagination}
-                                onPaginationChange={setPagination}
-                                pageCount={pageCount}
-                                options={{
-                                    manualPagination: true,
-                                }}
-                            />
-                        )}
-                    </CardBody>
-                </Card>
-            </Col>
-        </Row>
+      <Row>
+        <Col>
+          <Card className="shadow-sm">
+            <CardHeader className="bg-light p-3">
+              <Row className="justify-content-between align-items-center gy-3">
+                <Col xs={12}>
+                  <InputGroup>
+                    <Form.Control
+                      type="text"
+                      placeholder="Search by name..."
+                      value={filters.name}
+                      onChange={(e) => setFilters(prev => ({ ...prev, name: e.target.value }))}
+                    />
+                    <Button variant="primary" onClick={() => setDebouncedFilters(filters)}>
+                      <IconifyIcon icon="mdi:magnify" />
+                    </Button>
+                  </InputGroup>
+                </Col>
+              </Row>
+            </CardHeader>
+            <div className="p-3 border-bottom">
+              <h6 className="fw-semibold">
+                <IconifyIcon icon="mdi:map-marker-outline" className="me-2" />
+                Filter by Location
+              </h6>
+              <p className="text-muted small mb-2">Click or drag the marker on the map to search for masjids in that area. Results will update automatically.</p>
+              <LocationPickerSearch onLocationChange={handleLocationChange} />
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                className="mt-3"
+                onClick={() => setFilters(prev => ({ ...prev, bounding_box: null }))}
+                disabled={!filters.bounding_box}
+              >
+                Clear Map Filter
+              </Button>
+            </div>
+            <CardBody>
+              {error && <Alert variant="danger">{error}</Alert>}
+              {loading ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" variant="primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </Spinner>
+                </div>
+              ) : (
+                <ReactTable<Masjid>
+                  columns={columns}
+                  data={masjids}
+                  rowsPerPageList={sizePerPageList}
+                  tableClass="table-striped table-hover"
+                  showPagination
+                  pagination={pagination}
+                  onPaginationChange={setPagination}
+                  pageCount={pageCount}
+                  options={{
+                    manualPagination: true,
+                  }}
+                />
+              )}
+            </CardBody>
+          </Card>
+        </Col>
+      </Row>
     </div>
   )
 }
