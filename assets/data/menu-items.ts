@@ -44,6 +44,18 @@ export const MENU_ITEMS: MenuItemType[] = [
     isTitle: true,
     roles: ['MASJID_ADMIN'],
   },
+    {
+    key: 'nikkah',
+    icon: 'mdi:ring',
+    label: 'nikkah',
+    badge: {
+      text: '',
+      variant: 'success',
+    },
+    url: '/nikkah-profiles',
+    roles: ['MASJID_ADMIN'],
+  },
+  
   {
     key: 'masjids',
     icon: 'material-symbols:mosque',

@@ -35,8 +35,12 @@ const ProfileDropdown = () => {
           <h6 className="text-overflow m-0">Welcome !</h6>
         </DropdownHeader>
         <Link href="/profile" className="dropdown-item">
-          <IconifyIcon icon="ri:settings-4-line" className="fs-16 align-middle me-1" />
-          <span>Settings</span>
+          <IconifyIcon icon="mdi:account-circle" className="fs-16 align-middle me-1" />
+          <span>Profile</span>
+        </Link>
+        <Link href="/my-nikkah-profile" className="dropdown-item">
+          <IconifyIcon icon="mdi:ring" className="fs-16 align-middle me-1" />
+          <span>Nikkah profile</span>
         </Link>
         <button onClick={() => signOut({ callbackUrl: '/login' })} className="dropdown-item">
           <IconifyIcon icon="ri:logout-circle-r-line" className="align-middle me-1" />
