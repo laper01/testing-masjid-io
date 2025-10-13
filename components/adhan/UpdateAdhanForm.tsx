@@ -34,16 +34,16 @@ export default function UpdateAdhanModal({ show, onHide, onSuccess, adhanId }: U
                 try {
                     const adhanRes = await fetch(`/api/adhan/${adhanId}`);
                     if (!adhanRes.ok) throw new Error('Failed to fetch Adhan details.');
-                    
+
                     // --- THE FIX IS HERE ---
                     const adhanResult = await adhanRes.json();
                     // We need to get the actual adhan object from the `data` property
-                    const adhanData = adhanResult.data; 
+                    const adhanData = adhanResult.data;
 
                     if (!adhanData || !adhanData.masjidId) {
                         throw new Error('Adhan data is missing or invalid.');
                     }
-                    
+
                     setInitialValues({ name: adhanData.name, adhan_file: null });
                     setCurrentAudioUrl(adhanData.url);
 
@@ -114,7 +114,18 @@ export default function UpdateAdhanModal({ show, onHide, onSuccess, adhanId }: U
                                     </Col>
                                     <Col md={12} className="mb-3">
                                         <Form.Label>Current Adhan Sound</Form.Label>
-                                        <div><audio controls src={currentAudioUrl} style={{ width: '100%' }} /></div>
+                                        <div>
+                                            {/* Hanya tampilkan audio player jika URL-nya ada */}
+                                            {currentAudioUrl ? (
+                                                <audio
+                                                    controls
+                                                    src={`/api/audio-proxy?audioUrl=${encodeURIComponent(currentAudioUrl)}`}
+                                                    style={{ width: '100%' }}
+                                                />
+                                            ) : (
+                                                <p className="text-muted">No adhan sound selected.</p>
+                                            )}
+                                        </div>
                                     </Col>
                                     <Col md={12} className="mb-3">
                                         <Form.Label htmlFor="adhan_file">Upload New Audio File (Optional)</Form.Label>

@@ -196,29 +196,29 @@ export default function MasjidSingle() {
 
     if (loading) return <Layout><div>Loading...</div></Layout>;
 
-        if (unauthorized) {
-        return (
-            <Layout>
-                <section className="pt-100 layout-pb-lg">
-                    <div className="container">
-                        <div className="row justify-center">
-                            <div className="col-xl-6 col-lg-8 text-center">
-                                <div className="py-80 px-40 rounded-8 bg-white shadow-3">
-                                    <Icon.Lock size={48} className="text-accent" />
-                                    <h2 className="text-30 fw-600 mt-20">Login Required</h2>
-                                    <p className="mt-10">You must be logged in to view the details for this page.</p>
-              
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </Layout>
-        );
-    }
+    if (unauthorized) {
+        return (
+            <Layout>
+                <section className="pt-100 layout-pb-lg">
+                    <div className="container">
+                        <div className="row justify-center">
+                            <div className="col-xl-6 col-lg-8 text-center">
+                                <div className="py-80 px-40 rounded-8 bg-white shadow-3">
+                                    <Icon.Lock size={48} className="text-accent" />
+                                    <h2 className="text-30 fw-600 mt-20">Login Required</h2>
+                                    <p className="mt-10">You must be logged in to view the details for this page.</p>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </Layout>
+        );
+    }
     if (error) return <Layout><div>Error: {error}</div></Layout>;
     if (!masjidData) return <Layout><div>Masjid not found.</div></Layout>;
-    
+
 
     const fullAddressString = [
         masjidData.address.addressLine1,
@@ -342,7 +342,11 @@ export default function MasjidSingle() {
                                                         {masjidData.adhanFiles.map(file => (
                                                             <li key={file.id} className="list-group-item d-flex justify-content-between align-items-center py-3">
                                                                 <span>{file.name}</span>
-                                                                <audio controls src={file.url} style={{ maxWidth: '250px' }} />
+                                                                <audio
+                                                                    controls
+                                                                    src={`/api/audio-proxy?audioUrl=${encodeURIComponent(file.url)}`}
+                                                                    style={{ maxWidth: '250px' }}
+                                                                />
                                                             </li>
                                                         ))}
                                                     </ul>

@@ -31,7 +31,7 @@ export default function AdhanManagementTable() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [showPreferenceModal, setShowPreferenceModal] = useState(false); 
+    const [showPreferenceModal, setShowPreferenceModal] = useState(false);
     const [selectedAdhan, setSelectedAdhan] = useState<AdhanFile | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -104,7 +104,7 @@ export default function AdhanManagementTable() {
         setShowCreateModal(false);
         setShowUpdateModal(false);
         setShowDeleteModal(false);
-        setShowPreferenceModal(false); 
+        setShowPreferenceModal(false);
         setSelectedAdhan(null);
     };
 
@@ -134,8 +134,8 @@ export default function AdhanManagementTable() {
 
     // --- Table Column Definitions (UPDATED) ---
     const columns: ColumnDef<AdhanFile>[] = useMemo(() => [
-        { 
-            header: 'Adhan Name', 
+        {
+            header: 'Adhan Name',
             accessorKey: 'name',
             cell: ({ row }) => {
                 // The star is now just a visual indicator
@@ -167,7 +167,20 @@ export default function AdhanManagementTable() {
         {
             header: 'Adhan Sound',
             accessorKey: 'url',
-            cell: ({ getValue }) => <audio controls src={getValue() as string} style={{ width: '250px' }} />,
+            cell: ({ getValue }) => {
+                const audioUrl = getValue() as string;
+                // Pastikan URL tidak kosong sebelum membuat elemen audio
+                if (!audioUrl) {
+                    return <span>No audio</span>;
+                }
+                return (
+                    <audio
+                        controls
+                        src={`/api/audio-proxy?audioUrl=${encodeURIComponent(audioUrl)}`}
+                        style={{ width: '250px' }}
+                    />
+                );
+            },
         },
         {
             id: 'actions',
@@ -197,7 +210,7 @@ export default function AdhanManagementTable() {
                                 <p className="text-muted mb-0">Manage and set default Adhan sounds.</p>
                             </div>
                             <ButtonGroup>
-                               <Button variant="light" onClick={() => setShowPreferenceModal(true)}>
+                                <Button variant="light" onClick={() => setShowPreferenceModal(true)}>
                                     <IconifyIcon icon="ri-settings-3-line" /> Manage Preferences
                                 </Button>
                                 <Button variant="success" onClick={() => setShowCreateModal(true)}>
@@ -232,9 +245,9 @@ export default function AdhanManagementTable() {
 
             {/* Modals */}
             <CreateAdhanModal show={showCreateModal} onHide={handleHideModals} onSuccess={handleSuccess} />
-            
+
             <PreferenceManagerModalTable show={showPreferenceModal} onHide={handleHideModals} onSuccess={handleSuccess} />
-            
+
             {selectedAdhan && (
                 <UpdateAdhanModal
                     show={showUpdateModal}
